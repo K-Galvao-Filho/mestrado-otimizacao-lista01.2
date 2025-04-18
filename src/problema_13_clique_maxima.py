@@ -2,100 +2,74 @@ import pulp
 import matplotlib.pyplot as plt
 import networkx as nx
 
-def resolver_problema_designacao(custos):
-    problema = pulp.LpProblem("Problema_Designacao", pulp.LpMinimize)
+# Função para resolver o problema de clique máxima
+def resolver_problema_clique(vertices, arestas):
+    problema = pulp.LpProblem("Problema_Clique_Maxima", pulp.LpMaximize)
 
-    agentes = list(custos.keys())
-    tarefas = list(next(iter(custos.values())).keys())
+    x = {v: pulp.LpVariable(f"x_{v}", cat='Binary') for v in vertices}
 
-    variaveis = {(a, t): pulp.LpVariable(f"x_{a}_{t}", cat='Binary') for a in agentes for t in tarefas}
+    problema += pulp.lpSum(x[v] for v in vertices), "Maximizar_Clique"
 
-    problema += pulp.lpSum(custos[a][t] * variaveis[(a, t)] for a in agentes for t in tarefas), "Custo_Total"
-
-    for a in agentes:
-        problema += pulp.lpSum(variaveis[(a, t)] for t in tarefas) == 1, f"Um_trabalho_por_agente_{a}"
-
-    for t in tarefas:
-        problema += pulp.lpSum(variaveis[(a, t)] for a in agentes) == 1, f"Uma_tarefa_por_trabalho_{t}"
+    for v1 in vertices:
+        for v2 in vertices:
+            if v1 != v2 and (v1, v2) not in arestas and (v2, v1) not in arestas:
+                problema += x[v1] + x[v2] <= 1, f"Restricao_{v1}_{v2}"
 
     problema.solve()
 
     resultado = {
         "status": pulp.LpStatus[problema.status],
-        "designacoes": {(a, t): variaveis[(a, t)].varValue for a in agentes for t in tarefas},
-        "custo_total": pulp.value(problema.objective)
+        "vertices_clique": [v for v in vertices if x[v].varValue == 1],
+        "tamanho_clique": pulp.value(problema.objective)
     }
 
     return resultado
 
-def plotar_designacao(dados, titulo):
-    G = nx.DiGraph()
-    agentes = sorted(set(a for a, t in dados['designacoes'].keys()))
-    tarefas = sorted(set(t for a, t in dados['designacoes'].keys()))
+# Função para plotar o grafo destacando a clique
+def plotar_clique(vertices, arestas, vertices_clique, titulo):
+    G = nx.Graph()
+    G.add_nodes_from(vertices)
+    G.add_edges_from(arestas)
 
-    pos = {}
-    for i, a in enumerate(agentes):
-        pos[f"Agente {a}"] = (0, -i)
-    for j, t in enumerate(tarefas):
-        pos[f"Tarefa {t}"] = (2, -j)
+    color_map = ['lightgreen' if v in vertices_clique else 'lightblue' for v in G.nodes()]
 
-    for (a, t), valor in dados['designacoes'].items():
-        if valor == 1:
-            G.add_edge(f"Agente {a}", f"Tarefa {t}")
-
-    plt.figure(figsize=(8, 5))
-    nx.draw(G, pos, with_labels=True, arrows=True, connectionstyle='arc3,rad=0.1', node_size=2500, node_color='lightgreen')
+    plt.figure(figsize=(8, 6))
+    nx.draw(G, with_labels=True, node_color=color_map, node_size=2000)
     plt.title(titulo)
-    plt.axis('off')
     plt.show()
 
-# Exemplo 1: Dados originais
-custos1 = {
-    1: {1: 13, 2: 20, 3: 15},
-    2: {1: 12, 2: 17, 3: 18},
-    3: {1: 16, 2: 18, 3: 14}
-}
+# Exemplo 1: Dados do problema
+vertices1 = ['A', 'B', 'C', 'D']
+arestas1 = [('A', 'B'), ('B', 'C'), ('C', 'D'), ('A', 'C')]
 
-dados_designacao1 = resolver_problema_designacao(custos1)
+dados_clique1 = resolver_problema_clique(vertices1, arestas1)
 
-print("\nProblema de Designacao - Exemplo 1:")
-print("Status:", dados_designacao1["status"])
-for (a, t), valor in dados_designacao1["designacoes"].items():
-    if valor == 1:
-        print(f"Agente {a} foi designado para Tarefa {t}")
-print("Custo Total: R$", dados_designacao1["custo_total"])
-plotar_designacao(dados_designacao1, "Designação de Agentes para Tarefas - Exemplo 1")
+print("\nProblema da Clique Máxima - Exemplo 1:")
+print("Status:", dados_clique1["status"])
+print("Vertices na clique:", dados_clique1["vertices_clique"])
+print("Tamanho da clique:", dados_clique1["tamanho_clique"])
+plotar_clique(vertices1, arestas1, dados_clique1['vertices_clique'], "Clique Máxima - Exemplo 1")
 
-# Exemplo 2: Novos dados
-custos2 = {
-    1: {1: 22, 2: 25, 3: 20},
-    2: {1: 18, 2: 17, 3: 21},
-    3: {1: 24, 2: 19, 3: 23}
-}
+# Exemplo 2: Grafo maior e mais conectado
+vertices2 = ['P', 'Q', 'R', 'S', 'T', 'U']
+arestas2 = [('P', 'Q'), ('P', 'R'), ('Q', 'R'), ('Q', 'S'), ('R', 'S'), ('S', 'T'), ('T', 'U')]
 
-dados_designacao2 = resolver_problema_designacao(custos2)
+dados_clique2 = resolver_problema_clique(vertices2, arestas2)
 
-print("\nProblema de Designacao - Exemplo 2:")
-print("Status:", dados_designacao2["status"])
-for (a, t), valor in dados_designacao2["designacoes"].items():
-    if valor == 1:
-        print(f"Agente {a} foi designado para Tarefa {t}")
-print("Custo Total: R$", dados_designacao2["custo_total"])
-plotar_designacao(dados_designacao2, "Designação de Agentes para Tarefas - Exemplo 2")
+print("\nProblema da Clique Máxima - Exemplo 2:")
+print("Status:", dados_clique2["status"])
+print("Vertices na clique:", dados_clique2["vertices_clique"])
+print("Tamanho da clique:", dados_clique2["tamanho_clique"])
+plotar_clique(vertices2, arestas2, dados_clique2['vertices_clique'], "Clique Máxima - Exemplo 2")
 
-# Exemplo 3: Outro conjunto novo
-custos3 = {
-    1: {1: 30, 2: 28, 3: 35},
-    2: {1: 26, 2: 32, 3: 29},
-    3: {1: 27, 2: 30, 3: 25}
-}
+# Exemplo 3: Grafo em estrutura de quase-clique
+vertices3 = ['X', 'Y', 'Z', 'W', 'V']
+arestas3 = [('X', 'Y'), ('X', 'Z'), ('X', 'W'), ('Y', 'Z'), ('Y', 'W'), ('Z', 'W'), ('W', 'V')]
 
-dados_designacao3 = resolver_problema_designacao(custos3)
+dados_clique3 = resolver_problema_clique(vertices3, arestas3)
 
-print("\nProblema de Designacao - Exemplo 3:")
-print("Status:", dados_designacao3["status"])
-for (a, t), valor in dados_designacao3["designacoes"].items():
-    if valor == 1:
-        print(f"Agente {a} foi designado para Tarefa {t}")
-print("Custo Total: R$", dados_designacao3["custo_total"])
-plotar_designacao(dados_designacao3, "Designação de Agentes para Tarefas - Exemplo 3")
+print("\nProblema da Clique Máxima - Exemplo 3:")
+print("Status:", dados_clique3["status"])
+print("Vertices na clique:", dados_clique3["vertices_clique"])
+print("Tamanho da clique:", dados_clique3["tamanho_clique"])
+plotar_clique(vertices3, arestas3, dados_clique3['vertices_clique'], "Clique Máxima - Exemplo 3")
