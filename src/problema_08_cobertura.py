@@ -1,5 +1,6 @@
 import pulp
 import matplotlib.pyplot as plt
+import networkx as nx
 
 # Função para resolver o problema de cobertura
 def resolver_problema_cobertura(elementos, subconjuntos):
@@ -22,14 +23,27 @@ def resolver_problema_cobertura(elementos, subconjuntos):
 
     return resultado
 
-# Função para plotar o resultado de cobertura
+# Função para plotar como grafo bipartido
 def plotar_cobertura(elementos, subconjuntos, subconjuntos_escolhidos, titulo):
-    cores = ['lightblue' if s not in subconjuntos_escolhidos else 'lightgreen' for s in subconjuntos]
-    fig, ax = plt.subplots()
-    ax.bar(subconjuntos.keys(), [len(subconjuntos[s]) for s in subconjuntos], color=cores)
-    plt.xlabel('Subconjuntos')
-    plt.ylabel('Elementos cobertos')
+    G = nx.Graph()
+
+    for s in subconjuntos:
+        G.add_node(s, bipartite=0)
+    for e in elementos:
+        G.add_node(e, bipartite=1)
+
+    for s, elems in subconjuntos.items():
+        for e in elems:
+            G.add_edge(s, e)
+
+    pos = {}
+    pos.update((n, (0, -i)) for i, n in enumerate(subconjuntos.keys()))
+    pos.update((n, (2, -i)) for i, n in enumerate(elementos))
+
+    plt.figure(figsize=(10, 6))
+    nx.draw(G, pos, with_labels=True, node_color=["lightgreen" if n in subconjuntos_escolhidos else "lightblue" for n in G.nodes()], node_size=2000)
     plt.title(titulo)
+    plt.axis('off')
     plt.show()
 
 # Exemplo 1: Dados da apostila
